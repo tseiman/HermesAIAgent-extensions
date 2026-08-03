@@ -1,0 +1,7 @@
+
+Codexusage plugin · YAML
+name: codexusage
+version: 1.0.0
+description: Show OpenAI/Codex Plan-consumption (5h/weekly, Credits, Limit-Status) via /codexusage
+
+ 
