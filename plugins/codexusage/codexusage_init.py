@@ -1,10 +1,10 @@
 """
 Hermes plugin: /codexusage
 
-Reads ~/.hermes/auth.json, retrieves the OpenAI/Codex access_token,
-extracts the chatgpt_account_id from the JWT, and queries
-https://chatgpt.com/backend-api/wham/usage. Output as a compact
-ASCII status block with bars for the 5h and weekly windows.
+Reads ~/.hermes/auth.json, retrieves the OpenAI/Codex access_token, extracts
+the chatgpt_account_id from the JWT, and queries
+https://chatgpt.com/backend-api/wham/usage. Output as a compact ASCII status
+block with bars for the 5h and weekly windows.
 
 Installation:
   mkdir -p ~/.hermes/plugins/codexusage
@@ -90,7 +90,7 @@ def _load_access_token():
 
     if not token:
         raise RuntimeError(
-            f"No OpenAI/Codex access_token available in {AUTH_FILE} gefunden."
+            f"No OpenAI/Codex access_token found in {AUTH_FILE}."
         )
     return token
 
@@ -102,8 +102,8 @@ def _fetch_usage(access_token):
     )
     if not account_id:
         raise RuntimeError(
-            "chatgpt_account_id not extracted from JWT "
-            "(Token eventually expired -> may ask hermes to use openai one time to refresh tokens)."
+            "could not extract chatgpt_account_id from the JWT "
+            "(token may be expired -> let hermes run an active request first)."
         )
 
     req = urllib.request.Request(
@@ -132,8 +132,8 @@ def _format_report(data):
     allowed = rl.get("allowed", True)
 
     lines = [
-        f"Plan: {plan}   |   Limit reached: {'YES' if limit_reached else 'No'}"
-        f"   |   Requests accepted: {'yes' if allowed else 'NO'}",
+        f"Plan: {plan}   |   Limit reached: {'YES' if limit_reached else 'no'}"
+        f"   |   Requests allowed: {'yes' if allowed else 'NO'}",
         "",
     ]
 
@@ -144,7 +144,7 @@ def _format_report(data):
         label = _window_label(win.get("limit_window_seconds"))
         used = win.get("used_percent", 0) or 0
         reset_in = _human_seconds(win.get("reset_after_seconds"))
-        lines.append(f"{label:<10} {_bar(used)}   Reset in {reset_in}")
+        lines.append(f"{label:<10} {_bar(used)}   resets in {reset_in}")
 
     credits = data.get("credits")
     if credits:
@@ -163,7 +163,7 @@ def _handle_codexusage(raw_args: str) -> str:
         token = _load_access_token()
         data = _fetch_usage(token)
     except Exception as e:
-        return f"codexusage: ERROR - {e}"
+        return f"codexusage: error - {e}"
 
     if raw_args.strip() == "json":
         return json.dumps(data, indent=2, ensure_ascii=False)
@@ -175,5 +175,6 @@ def register(ctx):
     ctx.register_command(
         "codexusage",
         handler=_handle_codexusage,
-        description="Display OpenAI/Codex Plan-consumption (5h/weekly, Credits). 'json' to get raw data.",
+        description="Show OpenAI/Codex plan usage (5h/weekly, credits). 'json' for raw data.",
     )
+  
