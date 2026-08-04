@@ -51,7 +51,7 @@ def _human_seconds(seconds):
 
 def _window_label(limit_window_seconds):
     if not limit_window_seconds:
-        return "Fenster"
+        return "Window"
     hours = limit_window_seconds / 3600
     if hours <= 6:
         return "5h-Limit"
@@ -122,7 +122,7 @@ def _fetch_usage(access_token):
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", "ignore")
-        raise RuntimeError(f"HTTP {e.code} von {USAGE_URL}: {body[:200]}") from e
+        raise RuntimeError(f"HTTP {e.code} from {USAGE_URL}: {body[:200]}") from e
 
 
 def _format_report(data):
@@ -137,14 +137,28 @@ def _format_report(data):
         "",
     ]
 
+    # Collect whichever windows the API actually populates. Which window ends
+    # up as "primary" vs. "secondary" depends on the account/plan (e.g. a
+    # metered/credits account may only show a weekly window, while a normal
+    # ChatGPT Plus subscription typically also has an active 5h window) - so
+    # don't assume a fixed mapping, just gather what's present.
+    windows = []
     for key in ("primary_window", "secondary_window"):
         win = rl.get(key)
-        if not win:
-            continue
-        label = _window_label(win.get("limit_window_seconds"))
-        used = win.get("used_percent", 0) or 0
-        reset_in = _human_seconds(win.get("reset_after_seconds"))
-        lines.append(f"{label:<10} {_bar(used)}   resets in {reset_in}")
+        if win:
+            windows.append(win)
+
+    if not windows:
+        lines.append("No active rate-limit window reported.")
+    else:
+        # Always show the shortest window (5h) above the longer one (weekly),
+        # regardless of which API key it came from.
+        windows.sort(key=lambda w: w.get("limit_window_seconds") or 0)
+        for win in windows:
+            label = _window_label(win.get("limit_window_seconds"))
+            used = win.get("used_percent", 0) or 0
+            reset_in = _human_seconds(win.get("reset_after_seconds"))
+            lines.append(f"{label:<10} {_bar(used)}   resets in {reset_in}")
 
     credits = data.get("credits")
     if credits:
